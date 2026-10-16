@@ -3,7 +3,8 @@ package com.devboard.controller;
 import com.devboard.dto.CreateProjectRequest;
 import com.devboard.dto.ProjectResponse;
 import com.devboard.service.ProjectService;
-
+import com.devboard.dto.AddProjectMemberRequest;
+import com.devboard.dto.ProjectMemberResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -23,15 +24,15 @@ public class ProjectController {
         this.projectService = projectService;
     }
 
+
     @PostMapping
     public ResponseEntity<ProjectResponse> createProject(
             @Valid @RequestBody CreateProjectRequest request,
             Authentication authentication) {
 
         ProjectResponse response = projectService.createProject(
-            request,
-            authentication.getName()
-        );
+                request,
+                authentication.getName());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -41,8 +42,7 @@ public class ProjectController {
             Authentication authentication) {
 
         return ResponseEntity.ok(
-            projectService.getMyProjects(authentication.getName())
-        );
+                projectService.getMyProjects(authentication.getName()));
     }
 
     @GetMapping("/{projectId}")
@@ -51,10 +51,35 @@ public class ProjectController {
             Authentication authentication) {
 
         return ResponseEntity.ok(
-            projectService.getProject(
-                projectId,
-                authentication.getName()
-            )
-        );
+                projectService.getProject(
+                        projectId,
+                        authentication.getName()));
     }
+    @PostMapping("/{projectId}/members")
+public ResponseEntity<ProjectMemberResponse> addMember(
+        @PathVariable Long projectId,
+        @Valid @RequestBody AddProjectMemberRequest request,
+        Authentication authentication) {
+
+    ProjectMemberResponse response = projectService.addMember(
+        projectId,
+        request,
+        authentication.getName()
+    );
+
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+}
+
+@GetMapping("/{projectId}/members")
+public ResponseEntity<List<ProjectMemberResponse>> getMembers(
+        @PathVariable Long projectId,
+        Authentication authentication) {
+
+    return ResponseEntity.ok(
+        projectService.getMembers(
+            projectId,
+            authentication.getName()
+        )
+    );
+}
 }

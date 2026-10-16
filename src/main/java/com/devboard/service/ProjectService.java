@@ -10,6 +10,9 @@ import com.devboard.entity.User;
 import com.devboard.repository.ProjectMemberRepository;
 import com.devboard.repository.ProjectRepository;
 import com.devboard.repository.UserRepository;
+import com.devboard.dto.AddProjectMemberRequest;
+import com.devboard.dto.ProjectMemberResponse;
+
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -139,4 +142,95 @@ public class ProjectService {
 
         return user;
     }
+    @Transactional
+public ProjectMemberResponse addMember(
+        Long projectId,
+        AddProjectMemberRequest request,
+        String authenticatedEmail) {
+
+    User actor = findActiveUser(authenticatedEmail);
+
+    Project project = projectRepository.findById(projectId)
+        .orElseThrow(() ->
+            new IllegalArgumentException("Project not found.")
+        );
+
+    boolean canManage =
+        actor.getRole() == Role.ADMIN
+        || (
+            actor.getRole() == Role.PROJECT_MANAGER
+            && project.getCreatedBy().getId().equals(actor.getId())
+        );
+
+    if (!canManage) {
+        throw new AccessDeniedException(
+            "Only the project manager or administrator can add members."
+        );
+    }
+
+    String email = request.email()
+        .trim()
+        .toLowerCase(Locale.ROOT);
+
+    User member = userRepository.findByEmailIgnoreCase(email)
+        .orElseThrow(() ->
+            new IllegalArgumentException("User account not found.")
+        );
+
+    if (!member.isActive()) {
+        throw new IllegalArgumentException(
+            "Inactive users cannot be added to a project."
+        );
+    }
+
+    if (member.getRole() != Role.DEVELOPER) {
+        throw new IllegalArgumentException(
+            "Only developer accounts can be added through this endpoint."
+        );
+    }
+
+    if (memberRepository.existsByProjectIdAndUserId(
+            projectId, member.getId())) {
+        throw new IllegalArgumentException(
+            "This user is already a project member."
+        );
+    }
+
+    ProjectMember saved = memberRepository.save(
+        new ProjectMember(project, member)
+    );
+
+    return ProjectMemberResponse.from(saved);
+}
+
+@Transactional(readOnly = true)
+public List<ProjectMemberResponse> getMembers(
+        Long projectId,
+        String authenticatedEmail) {
+
+    User actor = findActiveUser(authenticatedEmail);
+
+    Project project = projectRepository.findById(projectId)
+        .orElseThrow(() ->
+            new IllegalArgumentException("Project not found.")
+        );
+
+    boolean canView =
+        actor.getRole() == Role.ADMIN
+        || project.getCreatedBy().getId().equals(actor.getId())
+        || memberRepository.existsByProjectIdAndUserId(
+            projectId, actor.getId()
+        );
+
+    if (!canView) {
+        throw new AccessDeniedException(
+            "You cannot view this project's members."
+        );
+    }
+
+    return memberRepository.findByProjectId(projectId)
+        .stream()
+        .map(ProjectMemberResponse::from)
+        .toList();
+}
 }

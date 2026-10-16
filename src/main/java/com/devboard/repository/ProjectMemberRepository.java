@@ -12,6 +12,8 @@ public interface ProjectMemberRepository
 
     List<ProjectMember> findByUserEmailIgnoreCase(String email);
 
+    List<ProjectMember> findByProjectId(Long projectId);
+
     boolean existsByProjectIdAndUserEmailIgnoreCase(
         Long projectId,
         String email
