@@ -173,7 +173,12 @@ public class TaskService {
             HttpStatus.NOT_FOUND, "Task not found"
         ));
 
-     projectId = task.getProject().getId();
+    if (!task.getProject().getId().equals(projectId)) {
+    throw new ResponseStatusException(
+        HttpStatus.NOT_FOUND,
+        "Task not found in this project"
+    );
+}
 
     boolean isAdmin = actor.getRole() == Role.ADMIN;
 
@@ -197,12 +202,7 @@ public class TaskService {
             "You cannot update this task."
         );
     }
-    if (!task.getProject().getId().equals(projectId)) {
-    throw new ResponseStatusException(
-        HttpStatus.NOT_FOUND,
-        "Task not found in this project"
-    );
-}
+
 
     TaskStatus current = task.getStatus();
     TaskStatus target = request.status();

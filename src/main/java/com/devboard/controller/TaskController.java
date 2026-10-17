@@ -19,7 +19,7 @@ public class TaskController {
 
     private final TaskService taskService;
 
-    @PatchMapping("/{taskId}/status")
+@PatchMapping("/{taskId}/status")
 public ResponseEntity<TaskResponse> updateTaskStatus(
         @PathVariable Long projectId,
         @PathVariable Long taskId,
@@ -32,13 +32,6 @@ public ResponseEntity<TaskResponse> updateTaskStatus(
         request,
         authentication.getName()
     );
-
-    if (!response.projectId().equals(projectId)) {
-        throw new org.springframework.web.server.ResponseStatusException(
-            org.springframework.http.HttpStatus.NOT_FOUND,
-            "Task not found in this project"
-        );
-    }
 
     return ResponseEntity.ok(response);
 }
