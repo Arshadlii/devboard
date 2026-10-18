@@ -7,6 +7,8 @@ import com.devboard.dto.UpdateTaskStatusRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 // import com.devboard.entity.ProjectMember;
+import com.devboard.entity.TaskActivity;
+import com.devboard.repository.TaskActivityRepository;
 import com.devboard.entity.Role;
 import com.devboard.entity.Task;
 import com.devboard.entity.TaskStatus;
@@ -30,16 +32,20 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final TaskActivityRepository activityRepository;
+    
 
     public TaskService(
             TaskRepository taskRepository,
             ProjectRepository projectRepository,
             ProjectMemberRepository memberRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            TaskActivityRepository activityRepository) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
+        this.activityRepository = activityRepository;
     }
 
     @Transactional
@@ -109,7 +115,16 @@ public class TaskService {
             task.setAssignee(assignee);
         }
 
-        return TaskResponse.from(taskRepository.save(task));
+        Task savedTask = taskRepository.save(task);
+
+            recordActivity(
+                savedTask,
+                actor,
+                "TASK_CREATED",
+                "Task created: " + savedTask.getTitle()
+            );
+
+return TaskResponse.from(savedTask);
     }
 
     @Transactional(readOnly = true)
@@ -235,8 +250,33 @@ public class TaskService {
         );
     }
 
-    task.setStatus(target);
+    TaskStatus previousStatus = current;
 
-    return TaskResponse.from(taskRepository.save(task));
+task.setStatus(target);
+Task savedTask = taskRepository.save(task);
+
+recordActivity(
+    savedTask,
+    actor,
+    "TASK_STATUS_CHANGED",
+    "Status changed from " + previousStatus + " to " + target
+);
+
+return TaskResponse.from(savedTask);
+}
+private void recordActivity(
+        Task task,
+        User actor,
+        String action,
+        String details) {
+
+    TaskActivity activity = new TaskActivity();
+    activity.setProject(task.getProject());
+    activity.setTask(task);
+    activity.setActor(actor);
+    activity.setAction(action);
+    activity.setDetails(details);
+
+    activityRepository.save(activity);
 }
 }
