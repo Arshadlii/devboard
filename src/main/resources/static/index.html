@@ -1,0 +1,350 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevBoard | Project Management</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div id="toast" class="toast hidden" role="status"></div>
+
+    <!-- Authentication -->
+    <main id="authScreen" class="auth-screen">
+        <section class="auth-brand">
+            <div class="brand-mark">D</div>
+            <p class="eyebrow">PROJECT MANAGEMENT PLATFORM</p>
+            <h1>Bring your team's work together.</h1>
+            <p class="muted-light">
+                Organize projects, track tasks and collaborate in one place.
+            </p>
+        </section>
+
+        <section class="auth-panel">
+            <div class="brand-inline">
+                <div class="brand-mark small">D</div>
+                <strong>DevBoard</strong>
+            </div>
+
+            <h2 id="authTitle">Welcome back</h2>
+            <p id="authSubtitle" class="muted">
+                Sign in to continue to your workspace.
+            </p>
+
+            <form id="authForm">
+                <div id="nameGroup" class="field hidden">
+                    <label for="authName">Full name</label>
+                    <input id="authName" autocomplete="name">
+                </div>
+
+                <div class="field">
+                    <label for="authEmail">Email address</label>
+                    <input id="authEmail" type="email"
+                           autocomplete="email" required>
+                </div>
+
+                <div class="field">
+                    <label for="authPassword">Password</label>
+                    <input id="authPassword" type="password"
+                           autocomplete="current-password"
+                           minlength="8" required>
+                </div>
+
+                <button id="authSubmit" class="btn primary full" type="submit">
+                    Sign in
+                </button>
+            </form>
+
+            <p class="auth-switch">
+                <span id="authSwitchText">New to DevBoard?</span>
+                <button id="authSwitch" class="text-button" type="button">
+                    Create account
+                </button>
+            </p>
+        </section>
+    </main>
+
+    <!-- Main application -->
+    <div id="appScreen" class="app-shell hidden">
+        <aside class="sidebar">
+            <a class="brand-inline sidebar-brand" href="/">
+                <div class="brand-mark small">D</div>
+                <strong>DevBoard</strong>
+            </a>
+
+            <p class="nav-heading">WORKSPACE</p>
+            <button class="nav-item active" id="navProjects" type="button">
+                <span>▦</span> My projects
+            </button>
+
+            <div class="sidebar-bottom">
+                <div class="avatar" id="userAvatar">U</div>
+                <div class="user-details">
+                    <strong id="userName">User</strong>
+                    <span id="userRole">Developer</span>
+                </div>
+                <button id="logoutBtn" class="icon-button"
+                        type="button" title="Sign out">↪</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div>
+                    <p class="eyebrow">YOUR WORKSPACE</p>
+                    <h1 id="pageTitle">My projects</h1>
+                </div>
+                <button id="newProjectBtn" class="btn primary" type="button">
+                    + New project
+                </button>
+            </header>
+
+            <section id="dashboardView">
+                <div class="welcome-banner">
+                    <div>
+                        <p class="eyebrow">OVERVIEW</p>
+                        <h2>Make progress visible.</h2>
+                        <p class="muted-light">
+                            Your projects and tasks, all in one place.
+                        </p>
+                    </div>
+                    <div class="banner-symbol">✦</div>
+                </div>
+
+                <div class="stats-grid">
+                    <article class="stat-card">
+                        <span class="stat-label">My projects</span>
+                        <strong id="projectCount">0</strong>
+                        <span class="stat-note">Accessible projects</span>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Tasks</span>
+                        <strong id="taskCount">0</strong>
+                        <span class="stat-note">In selected project</span>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Completed</span>
+                        <strong id="completedCount">0</strong>
+                        <span class="stat-note">In selected project</span>
+                    </article>
+                </div>
+
+                <div class="section-heading">
+                    <div>
+                        <h2>Projects</h2>
+                        <p class="muted">Select a project to view its tasks.</p>
+                    </div>
+                </div>
+                <div id="projectsGrid" class="projects-grid"></div>
+            </section>
+
+            <section id="projectView" class="hidden">
+                <button id="backBtn" class="text-button back-button"
+                        type="button">← All projects</button>
+
+                <div class="project-heading">
+                    <div>
+                        <p class="eyebrow">PROJECT DETAILS</p>
+                        <h2 id="selectedProjectName">Project</h2>
+                        <p id="selectedProjectDescription" class="muted"></p>
+                    </div>
+                    <button id="newTaskBtn" class="btn primary" type="button">
+                        + New task
+                    </button>
+                </div>
+
+                            
+                <div class="section-heading">
+                    <h2>Project members</h2>
+                    <button id="addMemberBtn" class="btn primary" type="button">
+                        + Add member
+                    </button>
+                </div>
+
+                <div id="membersList" class="members-list"></div>
+
+                <div class="section-heading">
+                    <h2>Task board</h2>
+                    <button id="refreshTasksBtn" class="btn secondary"
+                            type="button">Refresh</button>
+                </div>
+                <div id="taskBoard" class="task-board"></div>
+
+                <div id="taskBoard" class="task-board"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Project form -->
+    <dialog id="projectDialog" class="modal">
+        <form id="projectForm" class="modal-form">
+            <div class="modal-heading">
+                <div>
+                    <p class="eyebrow">WORKSPACE</p>
+                    <h2>Create project</h2>
+                </div>
+                <button class="icon-button close-dialog" type="button">✕</button>
+            </div>
+
+            <div class="field">
+                <label for="projectName">Project name</label>
+                <input id="projectName" maxlength="150" required>
+            </div>
+            <div class="field">
+                <label for="projectDescription">Description</label>
+                <textarea id="projectDescription" rows="3"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label for="projectPriority">Priority</label>
+                    <select id="projectPriority">
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM" selected>Medium</option>
+                        <option value="HIGH">High</option>
+                        <option value="CRITICAL">Critical</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="projectDeadline">Deadline</label>
+                    <input id="projectDeadline" type="date">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn secondary close-dialog" type="button">
+                    Cancel
+                </button>
+                <button class="btn primary" type="submit">Create project</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Task form -->
+    <dialog id="taskDialog" class="modal">
+        <form id="taskForm" class="modal-form">
+            <div class="modal-heading">
+                <div>
+                    <p class="eyebrow">PROJECT TASK</p>
+                    <h2>Create task</h2>
+                </div>
+                <button class="icon-button close-dialog" type="button">✕</button>
+            </div>
+
+            <div class="field">
+                <label for="taskTitle">Task title</label>
+                <input id="taskTitle" maxlength="150" required>
+            </div>
+            <div class="field">
+                <label for="taskDescription">Description</label>
+                <textarea id="taskDescription" rows="3"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label for="taskPriority">Priority</label>
+                    <select id="taskPriority">
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM" selected>Medium</option>
+                        <option value="HIGH">High</option>
+                        <option value="CRITICAL">Critical</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="taskDeadline">Deadline</label>
+                    <input id="taskDeadline" type="date">
+                </div>
+            </div>
+            <div class="field">
+                <label for="taskAssignee">Assignee user ID (optional)</label>
+                <input id="taskAssignee" type="number" min="1"
+                       placeholder="Enter a project member's developer ID">
+            </div>
+            <p class="muted small-text">
+                The assignee must be an active developer who belongs to this project.
+            </p>
+            <div class="modal-actions">
+                <button class="btn secondary close-dialog" type="button">
+                    Cancel
+                </button>
+                <button class="btn primary" type="submit">Create task</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Task details -->
+    <dialog id="taskDetailsDialog" class="modal details-modal">
+        <div class="modal-form">
+            <div class="modal-heading">
+                <div>
+                    <p class="eyebrow">TASK DETAILS</p>
+                    <h2 id="detailTaskTitle">Task</h2>
+                </div>
+                <button class="icon-button close-dialog" type="button">✕</button>
+            </div>
+
+            <p id="detailTaskDescription" class="muted"></p>
+
+            <div class="field">
+                <label for="detailTaskStatus">Update status</label>
+                <select id="detailTaskStatus">
+                    <option value="TODO">To do</option>
+                    <option value="IN_PROGRESS">In progress</option>
+                    <option value="IN_REVIEW">In review</option>
+                    <option value="COMPLETED">Completed</option>
+                </select>
+                <button id="updateStatusBtn" class="btn secondary"
+                        type="button">Save status</button>
+            </div>
+
+            <hr>
+            <h3>Comments</h3>
+            <div id="commentsList" class="comments-list"></div>
+            <form id="commentForm">
+                <div class="field">
+                    <label for="commentContent">Add a comment</label>
+                    <textarea id="commentContent" maxlength="2000"
+                              rows="3" required></textarea>
+                </div>
+                <button class="btn primary" type="submit">Post comment</button>
+            </form>
+
+            <hr>
+            <h3>Activity history</h3>
+            <div id="activityList" class="activity-list"></div>
+        </div>
+    </dialog>
+    
+<dialog id="memberDialog" class="modal">
+    <form id="memberForm" class="modal-form">
+        <div class="modal-heading">
+            <div>
+                <p class="eyebrow">PROJECT TEAM</p>
+                <h2>Add project member</h2>
+            </div>
+            <button class="icon-button close-dialog"
+                    type="button">✕</button>
+        </div>
+
+        <div class="field">
+            <label for="memberEmail">Developer email</label>
+            <input id="memberEmail" type="email"
+                   placeholder="developer@example.com" required>
+        </div>
+
+        <p class="muted small-text">
+            The user must already have an account and have the DEVELOPER role.
+        </p>
+
+        <div class="modal-actions">
+            <button class="btn secondary close-dialog" type="button">
+                Cancel
+            </button>
+            <button class="btn primary" type="submit">
+                Add member
+            </button>
+        </div>
+    </form>
+</dialog>
+
+</body>
+</html>

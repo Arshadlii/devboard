@@ -62,9 +62,18 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/register").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                 .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/style.css",
+                                "/app.js"
+                            ).permitAll()
                 .anyRequest().authenticated()
-            );
+               
+                                        );
+  
 
         return http.build();
     }
+ 
 }
