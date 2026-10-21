@@ -45,11 +45,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+
     public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
 
+                    System.out.println(">>> LOGIN CONTROLLER REACHED");
         Authentication authentication = authenticationManager.authenticate(
             UsernamePasswordAuthenticationToken.unauthenticated(
                 request.email().trim(),

@@ -124,6 +124,40 @@ function showApp() {
 }
 
 
+function getCurrentRole() {
+    return currentUser?.role
+        || currentUser?.roles?.find(r =>
+            r.authority?.startsWith("ROLE_")
+        )?.authority?.replace(/^ROLE_/, "")
+        || "USER";
+}
+
+function updateProjectPermissions() {
+    const role = getCurrentRole();
+
+    const isAdmin = role === "ADMIN";
+    const isProjectManager = role === "PROJECT_MANAGER";
+
+    // The backend must still enforce these permissions.
+    const canManageProject = isAdmin || isProjectManager;
+
+    $("newTaskBtn").classList.toggle(
+        "hidden", !canManageProject
+    );
+
+    $("addMemberBtn").classList.toggle(
+        "hidden", !canManageProject
+    );
+
+    $("newProjectBtn").classList.toggle(
+        "hidden", !canManageProject
+    );
+}
+
+
+
+
+
 function setAuthMode(mode) {
     authMode = mode;
     const registering = mode === "register";
@@ -198,6 +232,7 @@ $("authForm").addEventListener("submit", async (event) => {
 async function loadCurrentUser() {
     currentUser = await api("/auth/me");
     showApp();
+    updateProjectPermissions();
     await loadProjects();
 }
 
@@ -306,6 +341,7 @@ function renderProjects() {
         card.addEventListener("click", () => {
             const project = projects[Number(card.dataset.projectIndex)];
             openProject(project);
+            updateProjectPermissions();
         });
     });
 }
@@ -660,6 +696,7 @@ setAuthMode("login");
 initialize();
 
 
+
 async function loadMembers() {
     if (!selectedProject) return;
 
@@ -676,47 +713,189 @@ async function loadMembers() {
             return;
         }
 
+        const role = getCurrentRole();
+        const canManage = ["ADMIN", "PROJECT_MANAGER"].includes(role);
+
         container.innerHTML = members.map(member => {
             const name = member.name || member.email || "Member";
-            const role = member.role || "USER";
+            const memberId = member.userId ?? member.id;
+            const isCreator =
+                String(member.email || "").toLowerCase() ===
+                String(selectedProject.createdByEmail || "").toLowerCase();
 
             return `
                 <article class="member-card">
                     <div class="avatar">
                         ${escapeHTML(name.charAt(0).toUpperCase())}
                     </div>
-                    <div>
+                    <div class="member-info">
                         <strong>${escapeHTML(name)}</strong>
                         <span>${escapeHTML(member.email || "")}</span>
-                        <span>${escapeHTML(role.replaceAll("_", " "))}</span>
+                        <span>${escapeHTML(
+                            (member.role || "USER").replaceAll("_", " ")
+                        )}</span>
                     </div>
+                    ${
+                        canManage && !isCreator && memberId != null
+                        ? `<button
+                                class="btn secondary"
+                                type="button"
+                                data-remove-member="${escapeHTML(memberId)}"
+                                data-member-name="${escapeHTML(name)}">
+                                Remove
+                           </button>`
+                        : ""
+                    }
                 </article>
             `;
         }).join("");
+
+        container.querySelectorAll("[data-remove-member]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const userId = button.dataset.removeMember;
+                const name = button.dataset.memberName;
+
+                if (!confirm(`Remove ${name} from this project?`)) return;
+
+                button.disabled = true;
+
+                try {
+                    await api(
+                        `/projects/${idOf(selectedProject)}/members/${userId}`,
+                        { method: "DELETE" }
+                    );
+
+                    showToast("Project member removed.");
+                    await loadMembers();
+                } catch (error) {
+                    showToast(error.message || "Could not remove member.", true);
+                    button.disabled = false;
+                }
+            });
+        });
     } catch (error) {
         showEmpty(container, error.message);
     }
 }
 
+
+
+let selectedDeveloper = null;
+let developerSearchTimer = null;
+
 $("addMemberBtn").addEventListener("click", () => {
     if (!selectedProject) return;
 
-    const role = currentUser?.role
-        || currentUser?.roles?.find(r =>
-            r.authority?.startsWith("ROLE_")
-        )?.authority?.replace(/^ROLE_/, "");
+    const role = getCurrentRole();
 
     if (!["ADMIN", "PROJECT_MANAGER"].includes(role)) {
-        showToast(
-            "Only the project manager or an administrator can add members.",
-            true
-        );
+        showToast("Only project managers or administrators can add members.", true);
         return;
     }
 
     $("memberForm").reset();
+    $("developerSearchResults").innerHTML = "";
+    $("selectedDeveloperEmail").value = "";
+    $("developerSearchMessage").textContent =
+        "Type at least 2 characters to search.";
+
+    selectedDeveloper = null;
     openDialog("memberDialog");
 });
+
+$("developerSearch").addEventListener("input", () => {
+    clearTimeout(developerSearchTimer);
+
+    selectedDeveloper = null;
+    $("selectedDeveloperEmail").value = "";
+
+    const term = $("developerSearch").value.trim();
+    const results = $("developerSearchResults");
+    const message = $("developerSearchMessage");
+
+    results.innerHTML = "";
+
+    if (term.length < 2) {
+        message.textContent = "Type at least 2 characters to search.";
+        return;
+    }
+
+    message.textContent = "Searching...";
+
+    developerSearchTimer = setTimeout(async () => {
+        try {
+            const users = normalizeArray(
+                await api(
+                    `/projects/${idOf(selectedProject)}/developer-options?q=${encodeURIComponent(term)}`
+                )
+            );
+
+            results.innerHTML = "";
+
+            if (!users.length) {
+                message.textContent = "No available developers found.";
+                return;
+            }
+
+            message.textContent = "Select a developer:";
+
+            users.forEach(user => {
+                const option = document.createElement("button");
+                option.type = "button";
+                option.className = "developer-search-option";
+                option.textContent = `${user.name} (${user.email})`;
+
+                option.addEventListener("click", () => {
+                    selectedDeveloper = user;
+                    $("selectedDeveloperEmail").value = user.email;
+                    $("developerSearch").value =
+                        `${user.name} (${user.email})`;
+
+                    results.innerHTML = "";
+                    message.textContent = "Selected: " + user.email;
+                });
+
+                results.appendChild(option);
+            });
+        } catch (error) {
+            message.textContent = error.message || "Search failed.";
+        }
+    }, 250);
+});
+
+$("memberForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (!selectedProject) return;
+
+    if (!selectedDeveloper) {
+        showToast("Search for and select a developer first.", true);
+        return;
+    }
+
+    const button = event.submitter;
+    if (button) button.disabled = true;
+
+    try {
+        await api(`/projects/${idOf(selectedProject)}/members`, {
+            method: "POST",
+            body: JSON.stringify({
+                email: selectedDeveloper.email
+            })
+        });
+
+        $("memberDialog").close();
+        showToast("Member added successfully.");
+        selectedDeveloper = null;
+
+        await loadMembers();
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        if (button) button.disabled = false;
+    }
+});
+
 
 $("memberForm").addEventListener("submit", async event => {
     event.preventDefault();
@@ -815,12 +994,14 @@ function itemFilename(attachments, attachmentId) {
     return item?.originalFilename || "attachment";
 }
 
+
 $("attachmentForm").addEventListener("submit", async event => {
     event.preventDefault();
 
     if (!selectedProject || !selectedTask) return;
 
     const file = $("attachmentFile").files[0];
+
     if (!file) {
         showToast("Please choose a file.", true);
         return;
@@ -830,6 +1011,10 @@ $("attachmentForm").addEventListener("submit", async event => {
         showToast("Maximum file size is 5 MB.", true);
         return;
     }
+
+    const button = $("uploadAttachmentBtn");
+    button.disabled = true;
+    button.textContent = "Uploading...";
 
     const formData = new FormData();
     formData.append("file", file);
@@ -845,14 +1030,29 @@ $("attachmentForm").addEventListener("submit", async event => {
         );
 
         if (!response.ok) {
-            const message = await response.text();
-            throw new Error(message || `Upload failed (${response.status})`);
+            const body = await response.text();
+            throw new Error(body || `Upload failed (${response.status})`);
         }
 
-        $("attachmentFile").value = "";
-        showToast("Attachment uploaded successfully.");
-        await loadAttachments();
+ $("attachmentForm").reset();
+
+showToast("Attachment uploaded successfully.");
+
+// Close the task details window after a successful upload.
+$("taskDetailsDialog").close();
     } catch (error) {
         showToast(error.message, true);
+    } finally {
+        button.disabled = false;
+        button.textContent = "Upload attachment";
     }
 });
+
+
+
+$("cancelAttachmentBtn").addEventListener("click", () => {
+    $("attachmentForm").reset();
+});
+
+
+

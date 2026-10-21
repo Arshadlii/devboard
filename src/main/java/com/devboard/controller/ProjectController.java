@@ -7,6 +7,9 @@ import com.devboard.dto.AddProjectMemberRequest;
 import com.devboard.dto.ProjectMemberResponse;
 import jakarta.validation.Valid;
 
+
+import com.devboard.dto.DeveloperOptionResponse;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -82,4 +85,28 @@ public ResponseEntity<List<ProjectMemberResponse>> getMembers(
         )
     );
 }
+
+@GetMapping("/{projectId}/developer-options")
+public ResponseEntity<List<DeveloperOptionResponse>> searchDevelopers(
+        @PathVariable Long projectId,
+        @RequestParam(defaultValue = "") String q,
+        Authentication authentication) {
+
+    return ResponseEntity.ok(
+            projectService.searchDevelopers(
+                    projectId, q, authentication.getName()));
+}
+
+@DeleteMapping("/{projectId}/members/{userId}")
+public ResponseEntity<Void> removeMember(
+        @PathVariable Long projectId,
+        @PathVariable Long userId,
+        Authentication authentication) {
+
+    projectService.removeMember(
+            projectId, userId, authentication.getName());
+
+    return ResponseEntity.noContent().build();
+}
+
 }

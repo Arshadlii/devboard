@@ -313,20 +313,49 @@
             <div id="activityList" class="activity-list"></div>
         </div>
         
-<hr>
-<h3>Attachments</h3>
 
-<div id="attachmentsList" class="comments-list"></div>
-
-<form id="attachmentForm">
-    <div class="field">
-        <label for="attachmentFile">Choose a file (max 5 MB)</label>
-        <input id="attachmentFile" type="file"
-               accept=".pdf,.png,.jpg,.jpeg,.txt,.csv,.doc,.docx"
-               required>
+<section class="attachment-section">
+    <div class="section-heading">
+        <div>
+            <h3>Attachments</h3>
+            <p class="muted">Upload or download files up to 5 MB.</p>
+        </div>
     </div>
-    <button class="btn primary" type="submit">Upload attachment</button>
-</form>
+
+    <div id="attachmentsList" class="comments-list"></div>
+
+    <form id="attachmentForm" class="attachment-form">
+        <div class="field">
+            <label for="attachmentFile">Select a file</label>
+            <input
+                id="attachmentFile"
+                name="file"
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.txt,.csv,.doc,.docx"
+                required
+            />
+        </div>
+
+        <div class="form-actions">
+            <button
+                class="btn secondary"
+                type="button"
+                id="cancelAttachmentBtn"
+            >
+                Clear selection
+            </button>
+
+            <button
+                class="btn primary"
+                type="submit"
+                id="uploadAttachmentBtn"
+            >
+                Upload attachment
+            </button>
+        </div>
+    </form>
+</section>
+
 
     </dialog>
     
@@ -341,11 +370,26 @@
                     type="button">✕</button>
         </div>
 
-        <div class="field">
-            <label for="memberEmail">Developer email</label>
-            <input id="memberEmail" type="email"
-                   placeholder="developer@example.com" required>
-        </div>
+       <div class="field">
+   <div class="field">
+    <label for="developerSearch">Search developers</label>
+
+    <input
+        id="developerSearch"
+        type="text"
+        placeholder="Type a name or email..."
+        autocomplete="off"
+    />
+
+    <div id="developerSearchResults" class="search-results"></div>
+
+    <input type="hidden" id="selectedDeveloperEmail" />
+
+    <p class="muted small-text" id="developerSearchMessage">
+        Type at least 2 characters to search.
+    </p>
+</div>
+</div>
 
         <p class="muted small-text">
             The user must already have an account and have the DEVELOPER role.

@@ -12,6 +12,9 @@ import com.devboard.repository.ProjectRepository;
 import com.devboard.repository.UserRepository;
 import com.devboard.dto.AddProjectMemberRequest;
 import com.devboard.dto.ProjectMemberResponse;
+import com.devboard.dto.DeveloperOptionResponse;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 import org.springframework.security.access.AccessDeniedException;
@@ -233,4 +236,85 @@ public List<ProjectMemberResponse> getMembers(
         .map(ProjectMemberResponse::from)
         .toList();
 }
+
+@Transactional(readOnly = true)
+public List<DeveloperOptionResponse> searchDevelopers(
+        Long projectId,
+        String term,
+        String authenticatedEmail) {
+
+    User actor = findActiveUser(authenticatedEmail);
+
+    Project project = projectRepository.findById(projectId)
+            .orElseThrow(() ->
+                    new IllegalArgumentException("Project not found."));
+
+    boolean canView = actor.getRole() == Role.ADMIN
+            || project.getCreatedBy().getId().equals(actor.getId())
+            || memberRepository.existsByProjectIdAndUserId(
+                    projectId, actor.getId());
+
+    if (!canView) {
+        throw new AccessDeniedException(
+                "You cannot search members for this project.");
+    }
+
+    String searchTerm = term == null ? "" : term.trim();
+
+    List<User> matches = userRepository.searchActiveUsersByRole(
+            Role.DEVELOPER, searchTerm);
+
+    Set<Long> existingMemberIds = memberRepository
+            .findByProjectId(projectId)
+            .stream()
+            .map(member -> member.getUser().getId())
+            .collect(Collectors.toSet());
+
+    return matches.stream()
+            .filter(user -> !existingMemberIds.contains(user.getId()))
+            .limit(20)
+            .map(user -> new DeveloperOptionResponse(
+                    user.getId(),
+                    user.getName(),
+                    user.getEmail()))
+            .toList();
+}
+
+@Transactional
+public void removeMember(
+        Long projectId,
+        Long userId,
+        String authenticatedEmail) {
+
+    User actor = findActiveUser(authenticatedEmail);
+
+    Project project = projectRepository.findById(projectId)
+            .orElseThrow(() ->
+                    new IllegalArgumentException("Project not found."));
+
+    boolean canManage = actor.getRole() == Role.ADMIN
+            || (actor.getRole() == Role.PROJECT_MANAGER
+                && project.getCreatedBy().getId().equals(actor.getId()));
+
+    if (!canManage) {
+        throw new AccessDeniedException(
+                "Only the project manager or an administrator can remove members.");
+    }
+
+    ProjectMember membership = memberRepository.findByProjectId(projectId)
+            .stream()
+            .filter(member -> member.getUser().getId().equals(userId))
+            .findFirst()
+            .orElseThrow(() ->
+                    new IllegalArgumentException(
+                            "This user is not a member of the project."));
+
+    if (membership.getUser().getId().equals(project.getCreatedBy().getId())) {
+        throw new IllegalArgumentException(
+                "The project creator cannot be removed from the project.");
+    }
+
+    memberRepository.delete(membership);
+}
+
 }

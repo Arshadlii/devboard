@@ -824,3 +824,115 @@ h3 {
     color: var(--muted);
     font-size: 11px;
 }
+
+/* Consistent modal spacing */
+dialog {
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 24px;
+    max-width: min(680px, calc(100vw - 32px));
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+}
+
+dialog::backdrop {
+    background: rgba(15, 23, 42, 0.52);
+    backdrop-filter: blur(4px);
+}
+
+.attachment-section {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 20px;
+    margin-top: 20px;
+}
+
+.attachment-section h3 {
+    margin-bottom: 16px;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.task-card,
+.project-card,
+.member-card {
+    transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.task-card:hover,
+.project-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 700px) {
+    dialog {
+        padding: 18px;
+        max-width: calc(100vw - 20px);
+    }
+
+    .form-actions {
+        flex-wrap: wrap;
+    }
+}
+
+.attachment-section {
+    padding: 20px 0;
+    border-top: 1px solid var(--border-color, #e2e8f0);
+}
+
+.attachment-form {
+    margin-top: 16px;
+}
+
+.attachment-form input[type="file"] {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid #dbe2ee;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+.search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.developer-search-option {
+    padding: 12px;
+    border: 1px solid #dbe2ee;
+    border-radius: 8px;
+    background: white;
+    color: #1e293b;
+    text-align: left;
+    cursor: pointer;
+}
+
+.developer-search-option:hover {
+    background: #f1f0ff;
+    border-color: #6b55ed;
+}
