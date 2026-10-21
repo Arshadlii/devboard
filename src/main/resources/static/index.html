@@ -312,6 +312,22 @@
             <h3>Activity history</h3>
             <div id="activityList" class="activity-list"></div>
         </div>
+        
+<hr>
+<h3>Attachments</h3>
+
+<div id="attachmentsList" class="comments-list"></div>
+
+<form id="attachmentForm">
+    <div class="field">
+        <label for="attachmentFile">Choose a file (max 5 MB)</label>
+        <input id="attachmentFile" type="file"
+               accept=".pdf,.png,.jpg,.jpeg,.txt,.csv,.doc,.docx"
+               required>
+    </div>
+    <button class="btn primary" type="submit">Upload attachment</button>
+</form>
+
     </dialog>
     
 <dialog id="memberDialog" class="modal">

@@ -522,6 +522,7 @@ function openTaskDetails(task) {
 
     loadComments();
     loadActivities();
+    loadAttachments();
 
     openDialog("taskDetailsDialog");
 }
@@ -740,5 +741,118 @@ $("memberForm").addEventListener("submit", async event => {
         showToast(error.message, true);
     } finally {
         if (button) button.disabled = false;
+    }
+});
+
+
+async function loadAttachments() {
+    if (!selectedProject || !selectedTask) return;
+
+    const container = $("attachmentsList");
+    showEmpty(container, "Loading attachments...");
+
+    try {
+        const attachments = normalizeArray(
+            await api(
+                `/projects/${idOf(selectedProject)}/tasks/${idOf(selectedTask)}/attachments`
+            )
+        );
+
+        if (!attachments.length) {
+            showEmpty(container, "No attachments yet.");
+            return;
+        }
+
+        container.innerHTML = attachments.map(item => `
+            <article class="comment-item">
+                <strong>${escapeHTML(item.originalFilename)}</strong>
+                <p>${(Number(item.fileSize || 0) / 1024).toFixed(1)} KB</p>
+                <button class="btn secondary"
+                        type="button"
+                        data-download-id="${escapeHTML(item.id)}">
+                    Download
+                </button>
+            </article>
+        `).join("");
+
+        container.querySelectorAll("[data-download-id]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const attachmentId = button.dataset.downloadId;
+
+                try {
+                    const response = await fetch(
+                        `${API}/projects/${idOf(selectedProject)}/tasks/${idOf(selectedTask)}/attachments/${attachmentId}`,
+                        { credentials: "same-origin" }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`Download failed (${response.status})`);
+                    }
+
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = objectUrl;
+                    link.download = itemFilename(attachments, attachmentId);
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    URL.revokeObjectURL(objectUrl);
+                } catch (error) {
+                    showToast(error.message, true);
+                }
+            });
+        });
+    } catch (error) {
+        showEmpty(container, error.message);
+    }
+}
+
+function itemFilename(attachments, attachmentId) {
+    const item = attachments.find(
+        attachment => String(attachment.id) === String(attachmentId)
+    );
+    return item?.originalFilename || "attachment";
+}
+
+$("attachmentForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (!selectedProject || !selectedTask) return;
+
+    const file = $("attachmentFile").files[0];
+    if (!file) {
+        showToast("Please choose a file.", true);
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        showToast("Maximum file size is 5 MB.", true);
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        const response = await fetch(
+            `${API}/projects/${idOf(selectedProject)}/tasks/${idOf(selectedTask)}/attachments`,
+            {
+                method: "POST",
+                credentials: "same-origin",
+                body: formData
+            }
+        );
+
+        if (!response.ok) {
+            const message = await response.text();
+            throw new Error(message || `Upload failed (${response.status})`);
+        }
+
+        $("attachmentFile").value = "";
+        showToast("Attachment uploaded successfully.");
+        await loadAttachments();
+    } catch (error) {
+        showToast(error.message, true);
     }
 });
