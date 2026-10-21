@@ -9,62 +9,75 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Locale;
 
 @Configuration
 public class AdminBootstrap {
 
     @Bean
-    CommandLineRunner createInitialAdmin(
+    CommandLineRunner createInitialUsers(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
+
             @Value("${DEVBOARD_ADMIN_NAME:}") String adminName,
             @Value("${DEVBOARD_ADMIN_EMAIL:}") String adminEmail,
-            @Value("${DEVBOARD_ADMIN_PASSWORD:}") String adminPassword
+            @Value("${DEVBOARD_ADMIN_PASSWORD:}") String adminPassword,
+
+            @Value("${DEVBOARD_PM_NAME:}") String pmName,
+            @Value("${DEVBOARD_PM_EMAIL:}") String pmEmail,
+            @Value("${DEVBOARD_PM_PASSWORD:}") String pmPassword
     ) {
         return args -> {
-            if (adminEmail.isBlank()
-                    || adminPassword.isBlank()
-                    || adminName.isBlank()) {
-                System.out.println(
-                    "Initial Admin bootstrap skipped: credentials not configured."
-                );
-                return;
-            }
+            createUserIfConfigured(
+                    userRepository, passwordEncoder,
+                    adminName, adminEmail, adminPassword, Role.ADMIN
+            );
 
-            if (userRepository.existsByEmailIgnoreCase(adminEmail.trim())) {
-                System.out.println(
-                    "Initial Admin bootstrap skipped: account already exists."
-                );
-                return;
-            }
-
-            if (userRepository.existsByEmailIgnoreCase(adminEmail.trim())) {
-                return;
-            }
-
-            
-
-            if (userRepository.findAll().stream()
-                    .anyMatch(user -> user.getRole() == Role.ADMIN)) {
-                System.out.println(
-                    "Initial Admin bootstrap skipped: an Admin already exists."
-                );
-                return;
-            }
-
-            User admin = new User();
-            admin.setName(adminName.trim());
-            admin.setEmail(adminEmail.trim().toLowerCase());
-            admin.setPasswordHash(passwordEncoder.encode(adminPassword));
-            admin.setRole(Role.ADMIN);
-            admin.setActive(true);
-
-            userRepository.save(admin);
-
-            System.out.println("Initial Admin account created.");
+            createUserIfConfigured(
+                    userRepository, passwordEncoder,
+                    pmName, pmEmail, pmPassword, Role.PROJECT_MANAGER
+            );
         };
     }
 
-   
+    private void createUserIfConfigured(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            String name,
+            String email,
+            String password,
+            Role role
+    ) {
+        if (name.isBlank() || email.isBlank() || password.isBlank()) {
+            System.out.println(role + " bootstrap skipped: credentials not configured.");
+            return;
+        }
+
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            System.out.println(role + " bootstrap skipped: email already exists.");
+            return;
+        }
+
+        boolean roleAlreadyExists = userRepository.findAll().stream()
+                .anyMatch(user -> user.getRole() == role);
+
+        if (roleAlreadyExists) {
+            System.out.println(role + " bootstrap skipped: this role already exists.");
+            return;
+        }
+
+        User user = new User();
+        user.setName(name.trim());
+        user.setEmail(normalizedEmail);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(role);
+        user.setActive(true);
+
+        userRepository.save(user);
+
+        System.out.println("Initial " + role + " account created.");
+    }
 }
