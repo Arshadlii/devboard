@@ -44,40 +44,40 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
-    @PostMapping("/login")
+    
+@PostMapping("/login")
+public ResponseEntity<?> login(
+        @Valid @RequestBody LoginRequest request,
+        HttpServletRequest httpRequest,
+        HttpServletResponse httpResponse) {
 
-    public ResponseEntity<?> login(
-            @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
+    Authentication authentication = authenticationManager.authenticate(
+        UsernamePasswordAuthenticationToken.unauthenticated(
+            request.email().trim(),
+            request.password()
+        )
+    );
 
-                    System.out.println(">>> LOGIN CONTROLLER REACHED");
-        Authentication authentication = authenticationManager.authenticate(
-            UsernamePasswordAuthenticationToken.unauthenticated(
-                request.email().trim(),
-                request.password()
-            )
-        );
+    // Create a fresh session after successful authentication.
+    httpRequest.getSession(true);
+    httpRequest.changeSessionId();
 
-        // Prevent session fixation after successful authentication.
-        httpRequest.changeSessionId();
+    SecurityContext context = SecurityContextHolder.createEmptyContext();
+    context.setAuthentication(authentication);
 
-        SecurityContext context =
-            SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
+    SecurityContextHolder.setContext(context);
+    securityContextRepository.saveContext(
+        context, httpRequest, httpResponse
+    );
 
-        securityContextRepository.saveContext(
-            context, httpRequest, httpResponse
-        );
+    return ResponseEntity.ok(Map.of(
+        "message", "Login successful",
+        "email", authentication.getName(),
+        "role", authentication.getAuthorities()
+            .iterator().next().getAuthority()
+    ));
+}
 
-        return ResponseEntity.ok(Map.of(
-            "message", "Login successful",
-            "email", authentication.getName(),
-            "role", authentication.getAuthorities()
-                .iterator().next().getAuthority()
-        ));
-    }
 
     @GetMapping("/me")
     public ResponseEntity<?> me(Authentication authentication) {
