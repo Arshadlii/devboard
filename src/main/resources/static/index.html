@@ -78,6 +78,9 @@
             <button class="nav-item active" id="navProjects" type="button">
                 <span>▦</span> My projects
             </button>
+            <button class="nav-item hidden" id="navUsers" type="button">
+    <span>👥</span> User management
+</button>
 
             <div class="sidebar-bottom">
                 <div class="avatar" id="userAvatar">U</div>
@@ -139,6 +142,31 @@
                 </div>
                 <div id="projectsGrid" class="projects-grid"></div>
             </section>
+
+            <section id="adminUsersView" class="hidden">
+    <div class="welcome-banner">
+        <div>
+            <p class="eyebrow">ADMINISTRATION</p>
+            <h2>User management</h2>
+            <p class="muted-light">
+                Manage user roles and account access.
+            </p>
+        </div>
+        <div class="banner-symbol">👥</div>
+    </div>
+
+    <div class="section-heading">
+        <div>
+            <h2>Registered users</h2>
+            <p class="muted">Change roles and account status.</p>
+        </div>
+        <button id="refreshUsersBtn" class="btn secondary" type="button">
+            Refresh
+        </button>
+    </div>
+
+    <div id="adminUsersList" class="members-list"></div>
+</section>
 
             <section id="projectView" class="hidden">
                 <button id="backBtn" class="text-button back-button"

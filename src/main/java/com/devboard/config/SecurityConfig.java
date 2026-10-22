@@ -68,6 +68,7 @@ public class SecurityConfig {
                                 "/style.css",
                                 "/app.js"
                             ).permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")            
                 .anyRequest().authenticated()
                
                                         );

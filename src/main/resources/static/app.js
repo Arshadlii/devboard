@@ -98,29 +98,47 @@ function showAuth() {
 }
 
 
+
 function showApp() {
     $("authScreen").classList.add("hidden");
     $("appScreen").classList.remove("hidden");
 
     const name = currentUser?.name || currentUser?.email || "User";
+    const role = getCurrentRole();
 
     $("userName").textContent = name;
-
-    const role = currentUser?.role
-        || currentUser?.roles?.find(r =>
-            r.authority?.startsWith("ROLE_")
-        )?.authority?.replace(/^ROLE_/, "")
-        || "USER";
-
-    $("userRole").textContent = role;
+    $("userRole").textContent = role.replaceAll("_", " ");
     $("userAvatar").textContent = name.charAt(0).toUpperCase();
 
-    const canCreateProject = ["ADMIN", "PROJECT_MANAGER"]
-        .includes(role);
+    const isAdmin = role === "ADMIN";
 
-    $("newProjectBtn").classList.toggle(
-        "hidden", !canCreateProject
-    );
+    $("navUsers").classList.toggle("hidden", !isAdmin);
+    $("navProjects").classList.toggle("hidden", isAdmin);
+    $("newProjectBtn").classList.toggle("hidden", isAdmin);
+
+    if (isAdmin) {
+        showAdminUsers();
+    } else {
+        showProjectsDashboard();
+    }
+}
+
+function showProjectsDashboard() {
+    $("adminUsersView").classList.add("hidden");
+    $("projectView").classList.add("hidden");
+    $("dashboardView").classList.remove("hidden");
+    $("pageTitle").textContent = "My projects";
+
+    loadProjects();
+}
+
+function showAdminUsers() {
+    $("dashboardView").classList.add("hidden");
+    $("projectView").classList.add("hidden");
+    $("adminUsersView").classList.remove("hidden");
+    $("pageTitle").textContent = "User management";
+
+    loadAdminUsers();
 }
 
 
@@ -230,10 +248,25 @@ $("authForm").addEventListener("submit", async (event) => {
 });
 
 async function loadCurrentUser() {
-    currentUser = await api("/auth/me");
+    const data = await api("/auth/me");
+
+    const authorities = Array.isArray(data.roles) ? data.roles : [];
+
+    currentUser = {
+        ...data,
+        role: data.role || authorities
+            .map(item => typeof item === "string"
+                ? item
+                : item.authority)
+            .find(authority => authority?.startsWith("ROLE_"))
+            ?.replace(/^ROLE_/, "")
+    };
+
     showApp();
-    updateProjectPermissions();
-    await loadProjects();
+
+    if (getCurrentRole() !== "ADMIN") {
+        updateProjectPermissions();
+    }
 }
 
 $("logoutBtn").addEventListener("click", async () => {
@@ -1056,3 +1089,142 @@ $("cancelAttachmentBtn").addEventListener("click", () => {
 
 
 
+
+async function loadAdminUsers() {
+    const container = $("adminUsersList");
+    showEmpty(container, "Loading users...");
+
+    try {
+        const users = normalizeArray(await api("/admin/users"));
+        const currentEmail = String(currentUser?.email || "").toLowerCase();
+
+        if (!users.length) {
+            showEmpty(container, "No users found.");
+            return;
+        }
+
+        container.innerHTML = users.map(user => {
+            const isSelf =
+                String(user.email || "").toLowerCase() === currentEmail;
+
+            const roleOptions = [
+                "ADMIN",
+                "PROJECT_MANAGER",
+                "DEVELOPER"
+            ].map(role => `
+                <option value="${role}"
+                    ${user.role === role ? "selected" : ""}>
+                    ${role.replaceAll("_", " ")}
+                </option>
+            `).join("");
+
+            return `
+                <article class="member-card">
+                    <div class="avatar">
+                        ${escapeHTML((user.name || user.email || "U")
+                            .charAt(0).toUpperCase())}
+                    </div>
+
+                    <div class="member-info">
+                        <strong>${escapeHTML(user.name || "Unnamed user")}</strong>
+                        <span>${escapeHTML(user.email)}</span>
+                        <span>Account: ${user.active === false
+                            ? "Inactive" : "Active"}</span>
+                    </div>
+
+                    <div class="field">
+                        <label for="role-${escapeHTML(user.id)}">Role</label>
+                        <select id="role-${escapeHTML(user.id)}"
+                            data-user-role="${escapeHTML(user.id)}"
+                            ${isSelf ? "disabled" : ""}>
+                            ${roleOptions}
+                        </select>
+
+                        <button class="btn secondary"
+                            type="button"
+                            data-save-role="${escapeHTML(user.id)}"
+                            ${isSelf ? "disabled" : ""}>
+                            Save role
+                        </button>
+
+                        <button class="btn secondary"
+                            type="button"
+                            data-toggle-status="${escapeHTML(user.id)}"
+                            data-active="${user.active !== false}"
+                            ${isSelf ? "disabled" : ""}>
+                            ${user.active === false
+                                ? "Activate" : "Deactivate"}
+                        </button>
+                    </div>
+                </article>
+            `;
+        }).join("");
+
+        container.querySelectorAll("[data-save-role]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = button.dataset.saveRole;
+                const role = $(`role-${id}`).value;
+
+                button.disabled = true;
+
+                try {
+                    await api(`/admin/users/${id}/role`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ role })
+                    });
+
+                    showToast("User role updated.");
+                    await loadAdminUsers();
+                } catch (error) {
+                    showToast(error.message, true);
+                } finally {
+                    button.disabled = false;
+                }
+            });
+        });
+
+        container.querySelectorAll("[data-toggle-status]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = button.dataset.toggleStatus;
+                const active = button.dataset.active !== "true";
+
+                if (!confirm(
+                    `${active ? "Activate" : "Deactivate"} this account?`
+                )) return;
+
+                button.disabled = true;
+
+                try {
+                    await api(`/admin/users/${id}/status`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ active })
+                    });
+
+                    showToast("Account status updated.");
+                    await loadAdminUsers();
+                } catch (error) {
+                    showToast(error.message, true);
+                } finally {
+                    button.disabled = false;
+                }
+            });
+        });
+    } catch (error) {
+        showEmpty(container, error.message);
+    }
+}
+
+$("navUsers").addEventListener("click", () => {
+    showAdminUsers();
+});
+
+$("navProjects").addEventListener("click", () => {
+    if (getCurrentRole() === "ADMIN") {
+        showToast("Admins use User Management.");
+        return;
+    }
+
+    showProjectsDashboard();
+});
+
+$("refreshUsersBtn").addEventListener("click", loadAdminUsers);
